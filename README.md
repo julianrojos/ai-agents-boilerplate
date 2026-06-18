@@ -109,6 +109,7 @@ npm run dev
 - `npm run lint:fix`: corrige automáticamente los avisos arreglables de ESLint.
 - `npm run format`: formatea el código con Prettier.
 - `npm run format:check`: comprueba que el código respeta Prettier.
+- `npm run agents:check`: valida la configuración compartida de agentes, skills, rules y workflows.
 
 ## Notas
 

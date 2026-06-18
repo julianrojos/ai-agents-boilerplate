@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "agents:check": "node scripts/validate-agent-config.mjs"
   },
   "keywords": [],
   "author": "",
