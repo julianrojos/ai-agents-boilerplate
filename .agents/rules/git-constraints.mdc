@@ -1,0 +1,36 @@
+---
+trigger: always_on
+alwaysApply: true
+globs: ["**/*"]
+priority: 100
+---
+
+# NO STAGE OR COMMIT WITHOUT EXPLICIT AUTHORIZATION
+
+## Absolute rule
+
+**NEVER** run commands that modify git history without explicit user authorization:
+
+- ❌ `git commit` (unless explicitly requested)
+- ❌ `git add` (unless explicitly requested)
+- ❌ `git push`
+- ❌ `git reset --hard`
+- ❌ `git rebase`
+
+## Exception
+
+Only when the user explicitly says:
+- "commit this"
+- "make a commit"
+- "git commit -m '...'"
+
+## Consequence
+
+If this rule is violated, the user may:
+1. Revert the commit
+2. Report the incident
+3. Request that the agent no longer operates in this repository
+
+## Reference
+
+This rule takes precedence over any workflow or skill that suggests automatic commits.

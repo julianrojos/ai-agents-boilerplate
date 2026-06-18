@@ -1,0 +1,75 @@
+---
+description: "UI architecture boundaries for Buscampleo: keep shared primitives, shared helpers, and route sections isolated."
+globs:
+  - "src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# UI Architecture Boundaries
+
+Buscampleo's UI is organized around a small set of shared building blocks and route-driven sections. Dependencies should flow from generic, reusable code toward specific screens. Peer sections should not reach into each other's private files.
+
+## Layer hierarchy
+
+```
+Tier 0   src/index.css / tailwind.config.ts  (tokens and theme mapping)
+  ↓
+Tier 1   src/components/ui/**                (primitives)
+  ↓
+Tier 1.5 src/components/shared/**            (reusable UI compositions)
+  ↓
+Tier 2   src/components/layout/**            (global chrome and shell)
+  ↓
+Tier 3   src/components/{jobs,filters,config}/**  (route-section components)
+  ↓
+Tier 4   src/pages/**                        (route composition)
+```
+
+## Shared support modules
+
+- `src/hooks/**` for reusable hooks and state helpers.
+- `src/lib/**` for pure utilities and formatting helpers.
+- `src/data/**` for mock or seed data that is not UI-specific.
+- `src/types/**` for shared domain contracts.
+
+These folders are shared support, not UI layers, but they should remain framework-light and avoid importing from route-section components.
+
+## Import rules
+
+| Layer | Can import from | Cannot import from |
+|-------|----------------|--------------------|
+| `src/components/ui/**` | `src/components/ui/**`, `src/lib/utils` | route-section components, pages |
+| `src/components/shared/**` | `src/components/ui/**`, `src/lib/**`, `src/types/**` | `src/components/{jobs,filters,config}/**`, pages |
+| `src/components/layout/**` | `src/components/ui/**`, `src/components/shared/**`, `src/hooks/**`, `src/lib/**`, `src/types/**` | private files from peer sections |
+| `src/components/{jobs,filters,config}/**` | `src/components/ui/**`, `src/components/shared/**`, `src/hooks/**`, `src/data/**`, `src/lib/**`, `src/types/**` | private files from sibling sections |
+| `src/pages/**` | any lower layer | other page files |
+
+## Shared logic between sections
+
+When two sections need the same utility:
+
+1. If it's a **UI pattern** (layout, display) → extract to `src/components/shared/**`.
+2. If it's a **data utility** (parsing, formatting) → extract to `src/lib/**`.
+3. If it's a **hook or state helper** → extract to `src/hooks/**`.
+4. If it's **seed or lookup data** → extract to `src/data/**`.
+5. If it's a **domain contract** → extract to `src/types/**`.
+
+Do not solve sharing by importing private files across sibling sections. That creates hidden coupling and makes later refactors expensive.
+
+## Orphan component criteria
+
+| Consumers | Location |
+|-----------|----------|
+| 1 | Keep local to the section |
+| 2+ across sections | `src/components/shared/` |
+| Generic primitive | `src/components/ui/` |
+
+## Enforcement
+
+- **MUST** fix boundary violations in new code before considering the task complete.
+- **SHOULD** fix violations in existing code when touching the file (boy scout rule with boundaries).
+- Existing violations are tolerated but **MUST NOT** be expanded.
+
+### Verification
+
+Check touched imports and ensure peer modules only consume shared lower layers. A quick search for sibling-private imports should return zero results for the files you changed.

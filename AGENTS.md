@@ -2,6 +2,13 @@
 
 Operational instructions for AI agents in this repository.
 
+## Canonical Source
+
+- `AGENTS.md` and `.agents/` are the tool-neutral source of truth.
+- `CLAUDE.md`, `GEMINI.md`, `.claude/skills`, `.cursor/rules`, and
+  `.cursor/skills` are thin adapters. Do not duplicate canonical content there.
+- Run `npm run agents:check` after changing agent configuration.
+
 ## Precedence
 
 Applies when instructions conflict (high → low):
@@ -23,6 +30,10 @@ Applies when instructions conflict (high → low):
 ## Skills
 
 - Skills live in `.agents/skills/**/SKILL.md`.
+- Keep the portable core compliant with the Agent Skills specification:
+  lowercase directory name, matching `name`, and a task-oriented `description`.
+- Tool-specific frontmatter is optional enhancement only; instructions must
+  remain usable when an agent ignores those fields.
 - Trigger: the user names a skill explicitly, or the task clearly matches the skill's
   `## When to use this skill` section.
 - Resolve relative paths referenced by a skill from that skill's own directory.
@@ -33,6 +44,8 @@ Applies when instructions conflict (high → low):
 
 - Workflows live in `.agents/workflows/*.md`. Each has a `description:` frontmatter field
   and a `# /<command>` heading.
+- Workflows are repository conventions, not a cross-tool discovery standard.
+  Agents load them through this manifest when the command or description matches.
 - Trigger: the user invokes `/<command>` (e.g. `/review`, `/handoff`), or the task clearly
   maps to a workflow's `description:` field.
 - When triggered, load the workflow file and follow its steps as the authoritative procedure
@@ -47,4 +60,3 @@ Applies when instructions conflict (high → low):
 - NUNCA crear worktrees ni ramas auxiliares (`isolation: "worktree"` prohibido).
 - Trabajar siempre en la rama activa del repositorio principal.
 - El usuario es quien decide cuándo crear ramas y commits. No hacerlo de forma autónoma.
-

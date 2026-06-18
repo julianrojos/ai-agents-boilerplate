@@ -1,0 +1,133 @@
+---
+description: "UI style contract for Buscampleo: token-first styling, semantic color usage, typography, and overlay discipline."
+globs:
+  - "src/**/*.tsx"
+alwaysApply: false
+---
+
+# UI Style Contract
+
+Buscampleo's UI is token-driven. Colors, surfaces, borders, shadows, and motion should come from `src/index.css` and the Tailwind theme mappings. Components should not hardcode palette values or invent a parallel visual system.
+
+## Token-first styling
+
+All application UI colors, surfaces, borders, and text states **MUST** come from the semantic token system exposed by `src/index.css`.
+
+Use semantic classes such as:
+
+- `bg-background`, `text-foreground`, `border-border`
+- `bg-muted`, `text-muted-foreground`
+- `bg-primary`, `text-primary-foreground`
+- `bg-success/15`, `text-success`
+- `bg-warning/15`, `text-warning`
+- `bg-danger/15`, `text-danger`
+
+### DO
+
+```tsx
+<div className="bg-background text-foreground border-border shadow-sm" />
+<Badge className="bg-success/15 text-success">Active</Badge>
+<button className="border-border bg-muted text-foreground">Save</button>
+```
+
+### DON'T
+
+```tsx
+<div className="bg-[#161618] text-[#fafafa] border-[#3a3a3f]" />
+<div className="bg-gray-900 text-gray-100 border-gray-700" />
+<div className="rounded-none border border-red-500/30 bg-red-500/10 p-3 text-red-700">Error</div>
+```
+
+## Prohibited color patterns
+
+Raw Tailwind palette classes are **FORBIDDEN** in application code under `src/`:
+
+```
+bg-red-*    bg-emerald-*    bg-amber-*    bg-green-*    bg-yellow-*
+text-red-*  text-emerald-*  text-amber-*  text-green-*  text-yellow-*
+border-red-* border-emerald-* border-amber-* border-green-* border-yellow-*
+```
+
+Use semantic utilities instead. If a new semantic state appears, add or reuse a token rather than reaching for a palette class.
+
+**Exception:** data-driven colors that come from user input or external data may use inline `style={{ backgroundColor }}` or similar when the color itself is content, not design. Keep these cases narrow and document them inline.
+
+## Inline styles
+
+### Forbidden
+
+Structural styling (layout, spacing, colors, borders) via `style={{}}`.
+
+```tsx
+// ✗ Never
+<div style={{ display: 'flex', gap: '16px', backgroundColor: '#1a1a1a' }}>
+```
+
+### Allowed (with justification)
+
+Dynamic values that cannot be expressed cleanly with Tailwind classes:
+
+```tsx
+// ✓ User-provided color swatch
+<div style={{ backgroundColor: tokenHexValue }} />
+
+// ✓ Calculated dimension
+<div style={{ width: `${percentage}%` }} />
+
+// ✓ Tree depth indentation
+<div style={{ paddingLeft: `${depth * 14 + 8}px` }} />
+```
+
+## Overlays and portals
+
+- Prefer the existing shadcn/Radix overlay primitives already wired into the app (`Sheet`, `DropdownMenu`, `ScrollArea`, `Select`, etc.).
+- Do not hand-roll portal plumbing in application components when an existing primitive already handles the overlay behavior.
+- If a custom portal is truly unavoidable, isolate it in a reusable primitive and document why it exists.
+
+## Typography
+
+Both font tokens are declared in the `@theme inline` block in `src/index.css`:
+
+- `--font-sans: 'Noto Sans Variable', sans-serif` — applied globally to `html` via `@apply font-sans` in `@layer base`.
+- `--font-heading: 'Roboto Slab Variable', serif` — applied explicitly with `font-heading` where visual weight is needed.
+
+| Element | Class | Hierarchy Role | Rationale |
+|---------|-------|----------------|-----------|
+| Page/section headings | `font-heading` | Title hierarchy | Roboto Slab Variable; uppercase + tracking-wide in most usages |
+| UI text, labels, body | `font-sans` (default) | Body hierarchy | Noto Sans Variable; inherited via `html`; no need to apply explicitly unless overriding |
+| Token paths, code | `font-mono` | Technical/code hierarchy | Monospace rhythm for paths, values, and code-like data |
+
+- **MUST** use semantic heading levels (`<h1>` page, `<h2>` section, `<h3>` subsection).
+- **SHOULD** keep headings aligned with the existing visual rhythm: `font-heading` + uppercase + `tracking-wide` where the UI already uses that pattern, not as a blanket rule everywhere.
+- Do not redefine font families inline — both tokens are already wired through `@theme inline`; use the utility classes.
+
+## Form and interaction surfaces
+
+- Keep primary labels visible and readable.
+- Use the existing primitives in `src/components/ui` instead of inventing custom wrappers unless the pattern is repeated and clearly reusable.
+- Icon-only controls require `aria-label`.
+- Keep error, warning, and status messaging semantic instead of embedding raw color classes in inline markup.
+
+## Dark mode
+
+The app supports dark tokens through the token layer in `src/index.css`.
+
+- Do not duplicate light/dark palette values in component code.
+- Prefer token classes over theme-specific branching in JSX.
+- If a primitive already emits `dark:` modifiers because of its internal implementation, leave it alone; application code should not add new theme-specific color logic unless it is token-backed.
+
+## Motion
+
+- Use modest, purposeful transitions that match the existing primitives.
+- Respect reduced motion settings.
+- Avoid introducing animation libraries for simple UI feedback unless the benefit is clear.
+
+## Enforcement
+
+- Violations in new code **MUST** be fixed.
+- Existing violations: fix when touching the file (boy scout rule).
+- When unsure whether a pattern is allowed, prefer the token system — it exists to absorb these decisions centrally.
+
+### Verification
+
+Review touched UI files for token usage, raw palette classes, unnecessary portal plumbing, and heading hierarchy consistency.

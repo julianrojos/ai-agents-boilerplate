@@ -3,8 +3,11 @@
 
 # Project rules and planning
 .AGENTS/
+!.agents/
+!.agents/**
+.agents/.DS_Store
+.agents/**/.DS_Store
 .PLANES/
-.agents/
 
 # Dependencies and build output
 build/
@@ -17,6 +20,9 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Claude Code local config
+.claude/settings.local.json
 
 # Logs
 *.log
