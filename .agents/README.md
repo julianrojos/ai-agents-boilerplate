@@ -1,7 +1,6 @@
 # Agent Configuration
 
-This directory is the canonical, tool-neutral source for repository agent
-configuration.
+This directory is the canonical, tool-neutral source for repository agent configuration.
 
 ## Layout
 
