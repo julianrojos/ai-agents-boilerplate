@@ -1,22 +1,30 @@
 # Agent Configuration
 
-This directory is the canonical, tool-neutral source for repository agent configuration.
+This directory is the canonical, tool-neutral source for repository agent
+configuration.
 
 ## Layout
 
-- `rules/`: persistent constraints scoped with `globs`.
-- `skills/<name>/SKILL.md`: on-demand capabilities following Agent Skills.
-- `workflows/`: repository slash-command procedures loaded through `AGENTS.md`.
+- `rules/`: persistent constraints scoped with frontmatter.
+- `skills/<name>/SKILL.md`: on-demand, portable capabilities.
+- `workflows/`: repository procedures triggered by command or intent.
 
-## Tool adapters
+## Active Configuration
 
-- Codex reads `AGENTS.md` and `.agents/skills` directly.
-- Gemini reads `GEMINI.md`, which imports `AGENTS.md`, and discovers
-  `.agents/skills` directly.
-- Claude reads `CLAUDE.md`, which imports `AGENTS.md`; `.claude/skills` points
-  to the canonical skills directory.
-- Cursor reads `AGENTS.md`; `.cursor/rules` and `.cursor/skills` point to the
+Only files under `.agents/` are active. Opinionated or technology-specific
+material belongs under `examples/` until explicitly copied into the active
+configuration.
+
+## Adapter Strategy
+
+- Codex, Windsurf/Devin, and GitHub Copilot read `AGENTS.md` directly.
+- Claude Code reads `CLAUDE.md`, which imports `AGENTS.md`.
+- Gemini CLI reads `GEMINI.md`, which imports `AGENTS.md`.
+- Cursor reads `AGENTS.md`.
+- `.claude/skills`, `.cursor/skills`, and `.cursor/rules` are symlinks to the
   canonical directories.
 
-Adapters must contain no copied rules or skills. Run `npm run agents:check`
-after changing this structure.
+Do not create adapters when a client already supports `AGENTS.md`. Do not copy
+canonical content manually into adapters.
+
+Run `npm run agents:check` after changing this structure.

@@ -2,7 +2,7 @@
 description: "FindExcellence (repo-wide, iterative): detects refactors, cleanup, architecture/consistency improvements, and performance opportunities (excludes bugs). Includes 14-day churn, max 2 plans per item, and a registry to avoid repetition. Stop condition: if there are no real deltas, does not re-emit items."
 ---
 
-# /findExcellence — Repo-wide excellence scan (v2.2, iterative, no code changes)
+# /find-excellence — Repo-wide excellence scan (v2.2, iterative, no code changes)
 
 This workflow inspects **all project code** (not the diff) and improves each iteration using an **Excellence Registry** as persistent memory.
 Do not edit code or make commits.
@@ -14,7 +14,7 @@ Do not edit code or make commits.
 ## Workflow contract
 state_file: `.agents/state/excellence-registry.yml`
 produces: `Repo Excellence Report v2.2` + `registry_seed|registry_patch` (to be applied manually)
-next: `/judgeExcellence`
+next: `/judge-excellence`
 
 ---
 
@@ -22,7 +22,7 @@ next: `/judgeExcellence`
 1) **Do not change code.** Analysis only.
 2) **Actionable-only:** if you cannot propose a **concrete action** or a **verification/measurement step**, **do not report it**.
 3) **No positive validations:** no ✅, no "this is fine", no "valid pattern".
-4) **Exclude bugs:** if you see a probable bug (incorrect behavior), send it to **OUT OF SCOPE (BUG?)** and recommend `/findBugs` (max 5).
+4) **Exclude bugs:** if you see a probable bug (incorrect behavior), send it to **OUT OF SCOPE (BUG?)** and recommend `/find-bugs` (max 5).
 5) **No redundancies:** if the improvement is already implemented in the repo, **omit it**.
 6) **Performance with discipline:** do not propose micro-optimizations without a hot-path hypothesis + measurement plan.
 7) **No duplicates:** if several observations share the same root, merge into 1 item.
@@ -223,7 +223,7 @@ Then return **only** the `NO_UPDATES OUTPUT` block (below).
 - **BUG?-01** — <brief>
   - Evidence:
   - Why it looks like a bug:
-  - Next step: run `/findBugs` with repro/test.
+  - Next step: run `/find-bugs` with repro/test.
 
 ---
 

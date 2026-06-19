@@ -5,58 +5,46 @@ Operational instructions for AI agents in this repository.
 ## Canonical Source
 
 - `AGENTS.md` and `.agents/` are the tool-neutral source of truth.
-- `CLAUDE.md`, `GEMINI.md`, `.claude/skills`, `.cursor/rules`, and
-  `.cursor/skills` are thin adapters. Do not duplicate canonical content there.
+- Tool-specific files are adapters only. Do not duplicate canonical content there.
 - Run `npm run agents:check` after changing agent configuration.
 
-## Precedence
+## Instruction Handling
 
-Applies when instructions conflict (high → low):
-1. **System prompt** — platform/IDE injected instructions.
-2. **AGENTS.md** — project-level defaults (this file).
-3. **`.agents/rules/*.mdc`** — domain and stage rules.
-4. **Conversation messages** — per-task overrides from the user.
+- Platform and client instructions retain their own precedence.
+- Explicit task instructions from the user override repository defaults unless
+  they conflict with platform, safety, or security constraints.
+- Apply only the repository rules relevant to the files and task in scope.
+- When instructions conflict at the same level, prefer the more specific one and
+  report unresolved ambiguity.
 
 ## Rule Loading
 
-- Rules live in `.agents/rules/*.mdc`; each has `globs:` frontmatter that controls when it applies.
-- For each task, apply only rules whose `globs` match the files being read, edited, or
-  generated. If a task touches multiple file groups, apply the union.
-- Quick discovery: `.agents/rules/_manifest.yml` maps rule IDs to doc types and stages via
-  `matrix.by_doc_type` and `matrix.by_stage`. Use it to identify relevant rules without
-  scanning all `.mdc` files when the doc type or stage is known.
-- Do not duplicate rule content here; update rule files directly.
+- Rules live in `.agents/rules/*.mdc`.
+- Each rule declares its scope with `globs` or `alwaysApply` frontmatter.
+- Use `.agents/rules/_manifest.yml` for discovery by document type or stage.
+- Load only matching rules. Do not treat examples as active configuration.
 
 ## Skills
 
-- Skills live in `.agents/skills/**/SKILL.md`.
-- Keep the portable core compliant with the Agent Skills specification:
-  lowercase directory name, matching `name`, and a task-oriented `description`.
-- Tool-specific frontmatter is optional enhancement only; instructions must
-  remain usable when an agent ignores those fields.
-- Trigger: the user names a skill explicitly, or the task clearly matches the skill's
-  `## When to use this skill` section.
-- Resolve relative paths referenced by a skill from that skill's own directory.
-- Prefer the minimal set of skills needed. When two skills overlap, apply both;
-  the more specific one takes precedence.
+- Skills live in `.agents/skills/<name>/SKILL.md`.
+- Skill directories use lowercase kebab-case and match the frontmatter `name`.
+- Trigger a skill when the user names it or the task clearly matches its description.
+- Resolve relative references from the skill directory.
+- Prefer the smallest set of skills that fully covers the task.
 
 ## Workflows
 
-- Workflows live in `.agents/workflows/*.md`. Each has a `description:` frontmatter field
-  and a `# /<command>` heading.
-- Workflows are repository conventions, not a cross-tool discovery standard.
-  Agents load them through this manifest when the command or description matches.
-- Trigger: the user invokes `/<command>` (e.g. `/review`, `/handoff`), or the task clearly
-  maps to a workflow's `description:` field.
-- When triggered, load the workflow file and follow its steps as the authoritative procedure
-  for that command.
-- `// turbo` in a workflow marks steps that are safe to run in parallel (read-only
-  operations). Run them concurrently when the runtime supports it.
-- Workflows and rules are complementary: the workflow defines procedure; applicable `.mdc`
-  rules still govern any files produced.
+- Workflows live in `.agents/workflows/<command>.md`.
+- Trigger a workflow when the user invokes `/<command>` or the task clearly
+  matches its frontmatter description.
+- Follow a triggered workflow as the authoritative procedure for that command.
+- `// turbo` marks read-only steps that may run in parallel.
+- Applicable rules still govern files produced by a workflow.
 
-## Restricciones de entorno
+## Repository Safety
 
-- NUNCA crear worktrees ni ramas auxiliares (`isolation: "worktree"` prohibido).
-- Trabajar siempre en la rama activa del repositorio principal.
-- El usuario es quien decide cuándo crear ramas y commits. No hacerlo de forma autónoma.
+- Work on the currently active branch.
+- Do not create branches or worktrees unless the user explicitly requests one.
+- Do not stage, commit, push, rebase, or rewrite history without explicit user
+  authorization.
+- Never discard user changes that are outside the requested scope.

@@ -2,7 +2,7 @@
 description: "Senior planner: design first-class architecture + a deterministic implementation plan to hand off to another AI. Planning only: no code changes, no branches, no stage/commit."
 ---
 
-# /planCreate — Senior planning handoff (architecture + execution plan)
+# /plan-create — Senior planning handoff (architecture + execution plan)
 
 This workflow produces an **Implementation Pack** that another AI must execute step-by-step with high code quality and minimal regressions.
 

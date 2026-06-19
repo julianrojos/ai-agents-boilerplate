@@ -2,7 +2,7 @@
 description: "JudgeExcellence (repo-wide, iterative): evaluates a Repo Excellence Report v2.2. If NO_UPDATES, responds without changes. If items exist, validates evidence, selects Plan A/B, and only proposes Plan C if ≥80% confident. Emits authoritative registry_patch. Does not change code."
 ---
 
-# /judgeExcellence — Repo-wide excellence judge (v2.2, iterative, no code changes)
+# /judge-excellence — Repo-wide excellence judge (v2.2, iterative, no code changes)
 
 Input: the user pastes a **Repo Excellence Report v2.2** (and optionally the current Excellence Registry).
 Goal: maximize **signal/noise ratio**, discard false positives, and improve diagnoses/proposals in each iteration.
@@ -15,7 +15,7 @@ Goal: maximize **signal/noise ratio**, discard false positives, and improve diag
 state_file: `.agents/state/excellence-registry.yml`
 consumes: `Repo Excellence Report v2.2` (+ optional registry)
 produces: `Judge Repo Excellence Report v2.2` + `registry_patch` (authority on status)
-next: (manual) apply patch + iterate with `/findExcellence`
+next: (manual) apply patch + iterate with `/find-excellence`
 
 ---
 

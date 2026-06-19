@@ -2,7 +2,7 @@
 description: FindBugs (repo-wide, iterative): discovers and refines real bugs across the entire project with rich evidence (including context), actionability scores, and consumption signals. Uses a Bug Registry to avoid repetition. Does not change code.
 ---
 
-# /findBugs — Repo-wide bug hunting (v3.1, iterative, actionable-only, no code changes)
+# /find-bugs — Repo-wide bug hunting (v3.1, iterative, actionable-only, no code changes)
 
 This workflow hunts bugs across the **entire repository** (not just the diff) and improves each iteration using a **Bug Registry** as persistent memory.
 Do not edit code or make commits.
@@ -14,7 +14,7 @@ Do not edit code or make commits.
 ## Workflow contract
 state_file: `.agents/state/bug-registry.yml`
 produces: `FindBugs Report v3.1` + `registry_seed|registry_patch` (to be applied manually)
-next: `/judgeBugs`
+next: `/judge-bugs`
 
 ---
 

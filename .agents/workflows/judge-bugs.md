@@ -2,7 +2,7 @@
 description: JudgeBugs (repo-wide, iterative): validates a FindBugs v3.1 report, filters false positives, penalizes missing consumers, improves diagnosis/fixes, and updates the Bug Registry. Does not change code.
 ---
 
-# /judgeBugs — Repo-wide Judge (v3.1, iterative, no code changes)
+# /judge-bugs — Repo-wide Judge (v3.1, iterative, no code changes)
 
 Input: the user pastes a **FindBugs Report v3.1** (and optionally the current Bug Registry).
 Goal: maximize **precision** and improve the quality of reasons/solutions across successive iterations.
@@ -15,7 +15,7 @@ Goal: maximize **precision** and improve the quality of reasons/solutions across
 state_file: `.agents/state/bug-registry.yml`
 consumes: `FindBugs Report v3.1` (+ optional registry)
 produces: `JudgeBugs Report v3.1` + `registry_patch` (authority on status)
-next: (manual) apply patch + iterate with `/findBugs`
+next: (manual) apply patch + iterate with `/find-bugs`
 
 ---
 
@@ -29,7 +29,7 @@ next: (manual) apply patch + iterate with `/findBugs`
    - If there is reasonable doubt about dynamic consumption, use `dynamic_possible` and do NOT penalize.
 7) **Actionability matters:** if `actionability == low`, it CANNOT be KEEP (at most NEEDS-VERIFY).
 8) If you recommend a fix: include 1 alternative; if there is none, say so.
-9) If an item is really a "refactor/smell", route it to `/findExcellence` instead of treating it as a bug.
+9) If an item is really a "refactor/smell", route it to `/find-excellence` instead of treating it as a bug.
 
 ## Gates
 - **KEEP** (real bug): Confidence (judge, after penalties) **≥ 70%** and `actionability ∈ {high, medium}`

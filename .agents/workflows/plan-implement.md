@@ -2,9 +2,9 @@
 description:  "implementer: execute an Implementation Pack step-by-step with maximum code quality. No branches, no stage/commit without explicit user permission."
 ---
 
-# /planImplement — Execute Implementation Pack (junior, high quality)
+# /plan-implement — Execute Implementation Pack (junior, high quality)
 
-Input: the user pastes an **Implementation Pack v1** produced by `/planCreate`.
+Input: the user pastes an **Implementation Pack v1** produced by `/plan-create`.
 
 ---
 

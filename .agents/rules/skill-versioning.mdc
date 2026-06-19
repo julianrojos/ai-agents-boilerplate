@@ -1,70 +1,52 @@
 ---
-description: Version and compatibility contract for local skills.
+description: "Version and compatibility contract for active repository skills."
 globs:
   - ".agents/skills/**/SKILL.md"
 ---
 
 # Skill Versioning
 
-This rule defines a safe migration path for versioned skills.
+Every active skill must declare a stable identity and compatibility contract.
 
-## Adoption policy
-
-- For new skills: include versioning metadata from day one (blocking).
-- For existing skills modified in the same change: add versioning metadata before merging (blocking).
-- Legacy skills that are not touched may remain unmigrated temporarily.
-
-## Required frontmatter fields for new or modified skills
+## Required Frontmatter
 
 ```yaml
-name: ds-component-pages
-version: "1.2.0" # SemVer
+name: example-skill
+description: "Task-oriented trigger description."
+version: "1.0.0"
 context:
-  doc_type: component
-  stage: markdown
+  doc_type: skill
+  stage: skills
 compatible_agents:
   - codex
   - claude
+  - cursor
   - gemini
-inputs:                        # Required — see skill-input-output-contract.mdc for type definitions
-  - name: component_name
-    type: component_name
+  - windsurf
+  - copilot
+inputs:
+  - name: topic
+    type: string
     required: true
     description: "..."
-  - name: docs_root
-    type: path
-    required: false
-    default: "docs/"
-    description: "..."
-outputs:                       # Required — declare all file artifacts and report outputs
-  - name: markdown_file
-    type: path
-    value: "${docs_root}/components/${component_name_snake_case}.md"
-    description: "..."
-  - name: report
+outputs:
+  - name: result
     type: report
     description: "..."
 ```
 
-`inputs` and `outputs` are required for all new or modified skills. Slot type definitions and agent behavior contract are in `skill-input-output-contract.mdc`.
+## Requirements
 
-`context` is required for all new or modified skills:
+- `name` must match the lowercase kebab-case directory name.
+- `description` must explain when the skill should be used.
+- `version` must be valid SemVer.
+- `context.doc_type` must be `source`, `skill`, or `workflow`.
+- `context.stage` must be `implementation`, `review`, or `skills`.
+- `compatible_agents` must contain at least one supported agent.
+- `inputs` and `outputs` follow `skill-input-output-contract.mdc`.
 
-- `doc_type` must align with manifest doc domains (`component`, `overview`, `workflow`, `spec`, `skills`, `frontend`).
-- `stage` must align with manifest stage routing (`spec`, `markdown`, `figma`, `visual-proof`, `pipeline`, `skills`, `frontend`).
+## SemVer Guidance
 
-## Optional changelog block
-
-```yaml
-changelog:
-  - version: "1.2.0"
-    date: "2026-02-19"
-    changes:
-      - "Updated deterministic prompt contract."
-```
-
-## SemVer guidance
-
-- `MAJOR`: breaking changes in expected input/output structure.
-- `MINOR`: additive behavior or new optional inputs.
-- `PATCH`: bug fixes and non-breaking prompt/rule refinements.
+- `MAJOR`: incompatible input, output, or behavior changes.
+- `MINOR`: additive behavior or optional inputs.
+- `PATCH`: fixes and non-breaking instruction refinements.
