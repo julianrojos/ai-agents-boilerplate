@@ -1,5 +1,5 @@
 ---
-description: "UI component governance for Buscampleo: keep primitives small, accessible, token-driven, and composable."
+description: "Example React component governance for accessible, token-driven primitives."
 globs:
   - "src/components/**/*.tsx"
 alwaysApply: false

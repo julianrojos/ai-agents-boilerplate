@@ -1,5 +1,5 @@
 ---
-description: "UI architecture boundaries for Buscampleo: keep shared primitives, shared helpers, and route sections isolated."
+description: "Example UI architecture boundaries for a React application."
 globs:
   - "src/**/*.{ts,tsx}"
 alwaysApply: false
@@ -7,7 +7,7 @@ alwaysApply: false
 
 # UI Architecture Boundaries
 
-Buscampleo's UI is organized around a small set of shared building blocks and route-driven sections. Dependencies should flow from generic, reusable code toward specific screens. Peer sections should not reach into each other's private files.
+This example UI is organized around shared building blocks and route-driven sections. Dependencies should flow from generic, reusable code toward specific screens. Peer sections should not reach into each other's private files.
 
 ## Layer hierarchy
 

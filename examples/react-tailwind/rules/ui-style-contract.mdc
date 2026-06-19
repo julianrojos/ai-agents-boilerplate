@@ -1,5 +1,5 @@
 ---
-description: "UI style contract for Buscampleo: token-first styling, semantic color usage, typography, and overlay discipline."
+description: "Example Tailwind style contract using semantic design tokens."
 globs:
   - "src/**/*.tsx"
 alwaysApply: false
@@ -7,7 +7,7 @@ alwaysApply: false
 
 # UI Style Contract
 
-Buscampleo's UI is token-driven. Colors, surfaces, borders, shadows, and motion should come from `src/index.css` and the Tailwind theme mappings. Components should not hardcode palette values or invent a parallel visual system.
+This example UI is token-driven. Colors, surfaces, borders, shadows, and motion should come from `src/index.css` and the Tailwind theme mappings. Components should not hardcode palette values or invent a parallel visual system.
 
 ## Token-first styling
 
