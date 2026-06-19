@@ -1,28 +1,19 @@
 import { lstat, readFile, readdir, readlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = resolve(fileURLToPath(new URL('../', import.meta.url)));
-const errors = [];
+const defaultRoot = resolve(fileURLToPath(new URL('../', import.meta.url)));
 
-const ALLOWED_AGENTS = new Set(['claude', 'codex', 'cursor', 'gemini']);
-const ALLOWED_DOC_TYPES = new Set([
-  'component',
-  'frontend',
-  'overview',
-  'skills',
-  'spec',
-  'workflow',
+const ALLOWED_AGENTS = new Set([
+  'claude',
+  'codex',
+  'copilot',
+  'cursor',
+  'gemini',
+  'windsurf',
 ]);
-const ALLOWED_STAGES = new Set([
-  'figma',
-  'frontend',
-  'markdown',
-  'pipeline',
-  'skills',
-  'spec',
-  'visual-proof',
-]);
+const ALLOWED_DOC_TYPES = new Set(['skill', 'source', 'workflow']);
+const ALLOWED_STAGES = new Set(['implementation', 'review', 'skills']);
 const SIMPLE_SLOT_TYPES = new Set([
   'boolean',
   'component_name',
@@ -32,47 +23,45 @@ const SIMPLE_SLOT_TYPES = new Set([
   'string',
 ]);
 
-function addError(code, relativePath, message) {
-  errors.push(`[${code}] ${relativePath}: ${message}`);
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function readText(relativePath) {
-  try {
-    return await readFile(join(root, relativePath), 'utf8');
-  } catch {
-    addError('CONFIG01', relativePath, 'missing or unreadable');
-    return '';
-  }
+function normalizeContent(content) {
+  return content.replaceAll('\r\n', '\n');
 }
 
-async function checkImport(relativePath) {
-  const content = (await readText(relativePath)).trim();
-  if (content !== '@AGENTS.md') {
-    addError('CONFIG01', relativePath, 'must contain only @AGENTS.md');
-  }
-}
+function forEachNonFencedLine(content, callback) {
+  const lines = normalizeContent(content).split('\n');
+  let fenceMarker = null;
 
-async function checkSymlink(relativePath, expectedTarget) {
-  const absolutePath = join(root, relativePath);
-
-  try {
-    const stats = await lstat(absolutePath);
-    if (!stats.isSymbolicLink()) {
-      addError('CONFIG01', relativePath, 'must be a symbolic link');
-      return;
+  for (const line of lines) {
+    const fenceMatch = line.match(/^(\s*)(```|~~~)/);
+    if (fenceMatch) {
+      const marker = fenceMatch[2];
+      if (fenceMarker === null) {
+        fenceMarker = marker;
+      } else if (fenceMarker === marker) {
+        fenceMarker = null;
+      }
+      continue;
     }
 
-    const target = await readlink(absolutePath);
-    if (target !== expectedTarget) {
-      addError('CONFIG01', relativePath, `expected link target ${expectedTarget}, found ${target}`);
-    }
-  } catch {
-    addError('CONFIG01', relativePath, 'missing symbolic link');
+    if (fenceMarker !== null) continue;
+    callback(line);
   }
 }
 
-function parseFrontmatter(content, relativePath) {
-  const match = content.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
+function hasNonFencedLine(content, pattern) {
+  let matched = false;
+  forEachNonFencedLine(content, (line) => {
+    if (!matched && pattern.test(line)) matched = true;
+  });
+  return matched;
+}
+
+function parseFrontmatter(content, relativePath, addError) {
+  const match = normalizeContent(content).match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
   if (!match) {
     addError('CONFIG01', relativePath, 'missing YAML frontmatter');
     return '';
@@ -92,12 +81,12 @@ function unquote(value) {
 }
 
 function getScalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${escapeRegExp(key)}:\\s*(.+?)\\s*$`, 'm'));
   return match ? unquote(match[1]) : undefined;
 }
 
 function getSectionLines(frontmatter, key) {
-  const lines = frontmatter.split('\n');
+  const lines = normalizeContent(frontmatter).split('\n');
   const start = lines.findIndex((line) => line === `${key}:`);
   if (start === -1) return [];
 
@@ -126,7 +115,7 @@ function getList(frontmatter, key) {
     .map(unquote);
 }
 
-function getSlots(frontmatter, key, relativePath) {
+function getSlots(frontmatter, key, relativePath, addError) {
   const slots = [];
   let current;
 
@@ -155,11 +144,10 @@ function getSlots(frontmatter, key, relativePath) {
 function isValidSlotType(type) {
   if (SIMPLE_SLOT_TYPES.has(type)) return true;
   const enumMatch = type.match(/^enum\(([^)]+)\)$/);
-  if (!enumMatch) return false;
-  return enumMatch[1].split(',').every((value) => value.trim().length > 0);
+  return Boolean(enumMatch?.[1].split(',').every((value) => value.trim()));
 }
 
-function validateSlotNames(slots, kind, relativePath) {
+function validateSlotNames(slots, kind, relativePath, addError) {
   const names = new Set();
 
   for (const slot of slots) {
@@ -175,8 +163,8 @@ function validateSlotNames(slots, kind, relativePath) {
   return names;
 }
 
-function validateInputs(inputs, relativePath) {
-  const inputNames = validateSlotNames(inputs, 'input', relativePath);
+function validateInputs(inputs, relativePath, addError) {
+  const inputNames = validateSlotNames(inputs, 'input', relativePath, addError);
 
   for (const input of inputs) {
     if (!isValidSlotType(input.type ?? '')) {
@@ -196,8 +184,8 @@ function validateInputs(inputs, relativePath) {
   return inputNames;
 }
 
-function validateOutputs(outputs, inputNames, relativePath) {
-  validateSlotNames(outputs, 'output', relativePath);
+function validateOutputs(outputs, inputNames, relativePath, addError) {
+  validateSlotNames(outputs, 'output', relativePath, addError);
 
   for (const output of outputs) {
     if (!isValidSlotType(output.type ?? '')) {
@@ -221,159 +209,237 @@ function validateOutputs(outputs, inputNames, relativePath) {
 
     for (const variable of output.value?.matchAll(/\$\{([a-z][a-z0-9_]*)\}/g) ?? []) {
       const name = variable[1];
-      const baseName = name.endsWith('_snake_case') ? name.slice(0, -'_snake_case'.length) : name;
+      const baseName = name.endsWith('_snake_case') ? name.slice(0, -11) : name;
       if (!inputNames.has(baseName)) {
-        addError(
-          'SLOT01',
-          relativePath,
-          `output "${output.name}" references unknown input "${name}"`,
-        );
+        addError('SLOT01', relativePath, `output "${output.name}" references unknown input "${name}"`);
       }
     }
   }
 }
 
-function validateSkillContract(frontmatter, relativePath) {
-  const version = getScalar(frontmatter, 'version');
-  if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-    addError('SKILL01', relativePath, 'version must be a valid SemVer string');
+export async function validateAgentConfig({ root = defaultRoot } = {}) {
+  const errors = [];
+
+  function addError(code, relativePath, message) {
+    errors.push(`[${code}] ${relativePath}: ${message}`);
   }
 
-  const context = getObject(frontmatter, 'context');
-  if (!ALLOWED_DOC_TYPES.has(context.doc_type)) {
-    addError('SKILL01', relativePath, 'context.doc_type is missing or invalid');
-  }
-  if (!ALLOWED_STAGES.has(context.stage)) {
-    addError('SKILL01', relativePath, 'context.stage is missing or invalid');
-  }
-
-  const compatibleAgents = getList(frontmatter, 'compatible_agents');
-  if (compatibleAgents.length === 0) {
-    addError('SKILL01', relativePath, 'compatible_agents must not be empty');
-  }
-  for (const agent of compatibleAgents) {
-    if (!ALLOWED_AGENTS.has(agent)) {
-      addError('SKILL01', relativePath, `unsupported compatible agent "${agent}"`);
+  async function readText(relativePath) {
+    try {
+      return await readFile(join(root, relativePath), 'utf8');
+    } catch {
+      addError('CONFIG01', relativePath, 'missing or unreadable');
+      return '';
     }
   }
 
-  const inputs = getSlots(frontmatter, 'inputs', relativePath);
-  const outputs = getSlots(frontmatter, 'outputs', relativePath);
-  if (inputs.length === 0) {
-    addError('SLOT01', relativePath, 'inputs must declare at least one slot');
-  }
-  if (outputs.length === 0) {
-    addError('SLOT01', relativePath, 'outputs must declare at least one slot');
+  async function checkCanonicalInstructions() {
+    const content = await readText('AGENTS.md');
+    const requiredHeadings = [
+      '## Canonical Source',
+      '## Instruction Handling',
+      '## Rule Loading',
+      '## Skills',
+      '## Workflows',
+      '## Repository Safety',
+    ];
+
+    for (const heading of requiredHeadings) {
+      if (!hasNonFencedLine(content, new RegExp(`^${escapeRegExp(heading)}\\s*$`))) {
+        addError('CONFIG01', 'AGENTS.md', `missing required heading "${heading}"`);
+      }
+    }
   }
 
-  const inputNames = validateInputs(inputs, relativePath);
-  validateOutputs(outputs, inputNames, relativePath);
+  async function checkImport(relativePath) {
+    const content = (await readText(relativePath)).trim();
+    if (content !== '@AGENTS.md') {
+      addError('CONFIG01', relativePath, 'must contain only @AGENTS.md');
+    }
+  }
+
+  async function checkSymlink(relativePath, expectedTarget) {
+    const absolutePath = join(root, relativePath);
+
+    try {
+      const stats = await lstat(absolutePath);
+      if (!stats.isSymbolicLink()) {
+        addError('CONFIG01', relativePath, 'must be a symbolic link');
+        return;
+      }
+
+      const target = await readlink(absolutePath);
+      if (target !== expectedTarget) {
+        addError('CONFIG01', relativePath, `expected link target ${expectedTarget}, found ${target}`);
+      }
+    } catch {
+      addError('CONFIG01', relativePath, 'missing symbolic link');
+    }
+  }
+
+  function validateSkillContract(frontmatter, relativePath) {
+    const version = getScalar(frontmatter, 'version');
+    if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+      addError('SKILL01', relativePath, 'version must be valid SemVer');
+    }
+
+    const context = getObject(frontmatter, 'context');
+    if (!ALLOWED_DOC_TYPES.has(context.doc_type)) {
+      addError('SKILL01', relativePath, 'context.doc_type is missing or invalid');
+    }
+    if (!ALLOWED_STAGES.has(context.stage)) {
+      addError('SKILL01', relativePath, 'context.stage is missing or invalid');
+    }
+
+    const compatibleAgents = getList(frontmatter, 'compatible_agents');
+    if (compatibleAgents.length === 0) {
+      addError('SKILL01', relativePath, 'compatible_agents must not be empty');
+    }
+    for (const agent of compatibleAgents) {
+      if (!ALLOWED_AGENTS.has(agent)) {
+        addError('SKILL01', relativePath, `unsupported compatible agent "${agent}"`);
+      }
+    }
+
+    const inputs = getSlots(frontmatter, 'inputs', relativePath, addError);
+    const outputs = getSlots(frontmatter, 'outputs', relativePath, addError);
+    if (inputs.length === 0) addError('SLOT01', relativePath, 'inputs must not be empty');
+    if (outputs.length === 0) addError('SLOT01', relativePath, 'outputs must not be empty');
+
+    const inputNames = validateInputs(inputs, relativePath, addError);
+    validateOutputs(outputs, inputNames, relativePath, addError);
+  }
+
+  async function checkSkills() {
+    const entries = await readdir(join(root, '.agents/skills'), { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const skillName = entry.name;
+      const relativePath = `.agents/skills/${skillName}/SKILL.md`;
+      const content = await readText(relativePath);
+      const frontmatter = parseFrontmatter(content, relativePath, addError);
+
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skillName)) {
+        addError('SKILL01', relativePath, 'directory name must be portable kebab-case');
+      }
+      if (getScalar(frontmatter, 'name') !== skillName) {
+        addError('SKILL01', relativePath, `frontmatter name must match directory (${skillName})`);
+      }
+      if (!getScalar(frontmatter, 'description')) {
+        addError('SKILL01', relativePath, 'missing description');
+      }
+
+      validateSkillContract(frontmatter, relativePath);
+    }
+  }
+
+  async function checkWorkflows() {
+    const entries = await readdir(join(root, '.agents/workflows'), { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+
+      const relativePath = `.agents/workflows/${entry.name}`;
+      const command = entry.name.slice(0, -3);
+      const content = await readText(relativePath);
+      const frontmatter = parseFrontmatter(content, relativePath, addError);
+
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(command)) {
+        addError('WORKFLOW01', relativePath, 'filename must be kebab-case');
+      }
+      if (!getScalar(frontmatter, 'description')) {
+        addError('WORKFLOW01', relativePath, 'missing description');
+      }
+      if (!hasNonFencedLine(content, new RegExp(`^# /${escapeRegExp(command)}(?:\\s|$)`))) {
+        addError('WORKFLOW01', relativePath, `heading must start with "# /${command} "`);
+      }
+    }
+  }
+
+  async function checkRulesAndManifest() {
+    const rulesRoot = join(root, '.agents/rules');
+    const entries = await readdir(rulesRoot, { withFileTypes: true });
+    const ruleFiles = entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.mdc'))
+      .map((entry) => entry.name)
+      .sort();
+
+    for (const file of ruleFiles) {
+      const relativePath = `.agents/rules/${file}`;
+      const content = await readText(relativePath);
+      const frontmatter = parseFrontmatter(content, relativePath, addError);
+
+      if (!getScalar(frontmatter, 'description') && !getScalar(frontmatter, 'trigger')) {
+        addError('RULE01', relativePath, 'missing description or trigger');
+      }
+      if (!/^(globs|alwaysApply):/m.test(frontmatter)) {
+        addError('RULE01', relativePath, 'missing globs or alwaysApply scope');
+      }
+    }
+
+    const manifestPath = '.agents/rules/_manifest.yml';
+    const manifest = await readText(manifestPath);
+    const manifestFiles = [...normalizeContent(manifest).matchAll(/^\s+file:\s*(.+\.mdc)\s*$/gm)]
+      .map((match) => unquote(match[1]))
+      .sort();
+
+    for (const file of ruleFiles) {
+      if (!manifestFiles.includes(file)) {
+        addError('MANIFEST01', manifestPath, `active rule "${file}" is not registered`);
+      }
+    }
+    for (const file of manifestFiles) {
+      if (!ruleFiles.includes(file)) {
+        addError('MANIFEST01', manifestPath, `references missing rule "${file}"`);
+      }
+    }
+
+    const requiredChecks = [
+      ['SLOT01', 'skill-input-output-contract'],
+      ['SKILL01', 'skill-versioning'],
+    ];
+    for (const [checkId, ruleId] of requiredChecks) {
+      const pattern = new RegExp(
+        `^\\s{4}${checkId}:\\n\\s{6}rule_ids:\\s*\\[[^\\]]*${ruleId}[^\\]]*\\]\\n\\s{6}blocking:\\s*true`,
+        'm',
+      );
+      if (!pattern.test(manifest)) {
+        addError('MANIFEST01', manifestPath, `${checkId} must block on ${ruleId}`);
+      }
+    }
+  }
+
+  await Promise.all([
+    checkCanonicalInstructions(),
+    checkImport('CLAUDE.md'),
+    checkImport('GEMINI.md'),
+    checkSymlink('.claude/skills', '../.agents/skills'),
+    checkSymlink('.cursor/rules', '../.agents/rules'),
+    checkSymlink('.cursor/skills', '../.agents/skills'),
+    checkSkills(),
+    checkWorkflows(),
+    checkRulesAndManifest(),
+  ]);
+
+  return {
+    ok: errors.length === 0,
+    errors: [...errors].sort(),
+  };
 }
 
-async function checkSkills() {
-  const skillsRoot = join(root, '.agents/skills');
-  const entries = await readdir(skillsRoot, { withFileTypes: true });
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+if (isMain) {
+  const result = await validateAgentConfig();
 
-    const skillName = entry.name;
-    const relativePath = `.agents/skills/${skillName}/SKILL.md`;
-    const content = await readText(relativePath);
-    const frontmatter = parseFrontmatter(content, relativePath);
-
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skillName)) {
-      addError('SKILL01', relativePath, 'directory name is not portable kebab-case');
-    }
-
-    const declaredName = getScalar(frontmatter, 'name');
-    if (declaredName !== skillName) {
-      addError('SKILL01', relativePath, `frontmatter name must match directory (${skillName})`);
-    }
-    if (!getScalar(frontmatter, 'description')) {
-      addError('SKILL01', relativePath, 'missing non-empty description');
-    }
-
-    validateSkillContract(frontmatter, relativePath);
+  if (!result.ok) {
+    console.error('Agent configuration is invalid:\n');
+    for (const error of result.errors) console.error(`- ${error}`);
+    process.exitCode = 1;
+  } else {
+    console.log('Agent configuration is valid.');
+    console.log('Native: Codex, Windsurf/Devin, Copilot. Adapters: Claude, Gemini, Cursor.');
   }
-}
-
-async function checkWorkflows() {
-  const workflowsRoot = join(root, '.agents/workflows');
-  const entries = await readdir(workflowsRoot, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-
-    const relativePath = `.agents/workflows/${entry.name}`;
-    const content = await readText(relativePath);
-    const frontmatter = parseFrontmatter(content, relativePath);
-
-    if (!getScalar(frontmatter, 'description')) {
-      addError('CONFIG01', relativePath, 'missing non-empty description');
-    }
-    if (!/^# \/[A-Za-z][A-Za-z0-9-]*/m.test(content)) {
-      addError('CONFIG01', relativePath, 'missing # /command heading');
-    }
-  }
-}
-
-async function checkRules() {
-  const rulesRoot = join(root, '.agents/rules');
-  const entries = await readdir(rulesRoot, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.mdc')) continue;
-
-    const relativePath = `.agents/rules/${entry.name}`;
-    const content = await readText(relativePath);
-    const frontmatter = parseFrontmatter(content, relativePath);
-
-    if (!getScalar(frontmatter, 'description') && !getScalar(frontmatter, 'trigger')) {
-      addError('CONFIG01', relativePath, 'missing description or trigger');
-    }
-    if (!/^(globs|alwaysApply):/m.test(frontmatter)) {
-      addError('CONFIG01', relativePath, 'missing globs or alwaysApply scope');
-    }
-  }
-}
-
-async function checkManifest() {
-  const relativePath = '.agents/rules/_manifest.yml';
-  const content = await readText(relativePath);
-
-  const requiredChecks = [
-    ['SLOT01', 'skill-input-output-contract'],
-    ['SKILL01', 'skill-versioning'],
-  ];
-  for (const [checkId, ruleId] of requiredChecks) {
-    const pattern = new RegExp(
-      `^\\s{4}${checkId}:\\n\\s{6}rule_ids:\\s*\\[[^\\]]*${ruleId}[^\\]]*\\]\\n\\s{6}blocking:\\s*true`,
-      'm',
-    );
-    if (!pattern.test(content)) {
-      addError('CONFIG01', relativePath, `${checkId} must be registered as blocking for ${ruleId}`);
-    }
-  }
-}
-
-await Promise.all([
-  checkImport('CLAUDE.md'),
-  checkImport('GEMINI.md'),
-  checkSymlink('.claude/skills', '../.agents/skills'),
-  checkSymlink('.cursor/rules', '../.agents/rules'),
-  checkSymlink('.cursor/skills', '../.agents/skills'),
-  checkSkills(),
-  checkWorkflows(),
-  checkRules(),
-  checkManifest(),
-]);
-
-if (errors.length > 0) {
-  console.error('Agent configuration is invalid:\n');
-  for (const error of errors.sort()) console.error(`- ${error}`);
-  process.exitCode = 1;
-} else {
-  console.log('Agent configuration is valid.');
-  console.log('Canonical skills: .agents/skills; adapters: Claude, Gemini, Cursor, Codex.');
 }
