@@ -70,32 +70,45 @@ Regla: si hay cambios en lockfiles/manifiestos, **siempre** añade una **PREGUNT
 
 // turbo
 ```bash
-# staged-first: si hay staged, úsalo; si no, usa working tree
-git diff --staged --name-only --no-color 2>/dev/null | grep -E '(package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|go\.sum|go\.mod)'   || git diff --name-only --no-color | grep -E '(package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|go\.sum|go\.mod)'   || true
+{
+  if git diff --staged --quiet; then
+    git diff --name-only --no-color -z
+  else
+    git diff --staged --name-only --no-color -z
+  fi
+  git ls-files --others --exclude-standard -z
+} | tr '\0' '\n' | grep -E '(package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|go\.sum|go\.mod)' || true
 ```
 
-// turbo
-2) Si **NO** hay cambios staged, extrae diff del working tree:
-```bash
-git diff --no-color
-```
-Si hay cambios staged, extrae diff staged:
-```bash
-git diff --staged --no-color
-```
+2) Construye un stream de diff completo antes de calcular `diff_stat` o `diff_fingerprint_patch_id`:
+   - `tracked_diff`: usa `git diff --staged --no-color` si hay staged; si no, usa `git diff --no-color`.
+   - `untracked_diff`: concatena `git diff --no-index --no-color -- /dev/null "<ruta>"` para cada archivo de `git ls-files --others --exclude-standard -z`.
+   - `full_diff`: `tracked_diff` seguido de `untracked_diff`.
 
-// turbo
-3) Vista rápida del alcance:
-```bash
-git diff --staged --stat --no-color || git diff --stat --no-color
-```
+3) Deriva `diff_stat` y `diff_fingerprint_patch_id` de `full_diff`, no de `git diff --staged ... || git diff ...`.
 
 ### 1.7 — Diff fingerprint (para /judge)
 Incluye un fingerprint del diff que estás revisando, para que /judge detecte si el informe está desactualizado.
 
 // turbo
 ```bash
-(git diff --staged --no-color || git diff --no-color) | git patch-id --stable 2>/dev/null | head -n 1 | awk '{print $1}' || true
+if git diff --staged --quiet; then
+  tracked_stat=$(git diff --stat --no-color)
+  tracked_diff=$(git diff --no-color)
+else
+  tracked_stat=$(git diff --staged --stat --no-color)
+  tracked_diff=$(git diff --staged --no-color)
+fi
+untracked_stat=""
+untracked_diff=""
+while IFS= read -r -d '' file; do
+  untracked_stat="${untracked_stat}
+$(git diff --no-index --stat --no-color -- /dev/null "$file")"
+  untracked_diff="${untracked_diff}
+$(git diff --no-index --no-color -- /dev/null "$file")"
+done < <(git ls-files --others --exclude-standard -z)
+printf '%s\n%s\n' "$tracked_stat" "$untracked_stat" | sed '/^$/d'
+printf '%s\n%s\n' "$tracked_diff" "$untracked_diff" | git patch-id --stable 2>/dev/null | head -n 1 | awk '{print $1}' || true
 ```
 
 ---
@@ -108,7 +121,7 @@ Para cada archivo y hunk modificado (incluyendo untracked revisados en 1.5):
    - Riesgos de `any`, `unknown` mal acotado, `null/undefined` no controlados.
    - Narrowing y guards consistentes con el estilo del repo.
 2) **Contratos del proyecto**:
-   - ¿Respeta `general-programming-principles.md`? (naming, early returns, etc.)
+   - ¿Respeta `general-programming-principles.mdc`? (naming, scope, verification, etc.)
 3) **Efectos secundarios / acoplamientos**
    - Si toca `tooling/`, ¿afecta a otros comandos?
    - Si toca APIs/utilidades, ¿rompe consumidores aguas abajo?
@@ -123,11 +136,15 @@ Para cada archivo y hunk modificado (incluyendo untracked revisados en 1.5):
 
 ### Filtro de redundancias (antes de reportar)
 Antes de incluir un hallazgo:
-- Verifica si ya está mitigado en el propio diff o en el contexto cercano del archivo.
-- Si necesitas más contexto, obténlo de forma read-only (elige una):
+  - Verifica si ya está mitigado en el propio diff o en el contexto cercano del archivo.
+  - Si necesitas más contexto, obténlo de forma read-only (elige una):
   - Re-diff con más contexto del archivo:
     ```bash
-    git diff --staged --no-color -U20 -- <ruta-del-archivo> || git diff --no-color -U20 -- <ruta-del-archivo>
+    if git diff --staged --quiet; then
+      git diff --no-color -U20 -- <ruta-del-archivo>
+    else
+      git diff --staged --no-color -U20 -- <ruta-del-archivo>
+    fi
     ```
   - O inspecciona el archivo alrededor del cambio (sin editar) con el visor/lectura del IDE.
 - Si está ya resuelto → **omite el punto** (no lo menciones).
