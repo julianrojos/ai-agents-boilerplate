@@ -1,118 +1,101 @@
-# Buscampleo
+# AI Agents Boilerplate
 
-Buscampleo se despliega como una SPA estática en GitHub Pages con Supabase como origen de datos y Edge Functions para las operaciones sensibles.
+Boilerplate para mantener skills, workflows y rules compatibles entre distintos
+agentes de programación con una única fuente de verdad.
 
-Buscampleo es una aplicación web personal para centralizar, filtrar y priorizar ofertas de empleo orientadas a perfiles de diseño digital, UI, Design Systems y Design Engineering.
+## Objetivo
 
-La app está pensada como un radar de señal y no como un simple agregador. Su objetivo es ayudar a identificar qué ofertas merecen atención y por qué.
+El repositorio separa el contenido canónico de los adaptadores específicos:
 
-## Características principales
+- `AGENTS.md`: punto de entrada neutral para instrucciones del repositorio.
+- `.agents/rules/`: restricciones persistentes y acotadas por archivos.
+- `.agents/skills/`: capacidades bajo demanda basadas en `SKILL.md`.
+- `.agents/workflows/`: procedimientos reutilizables invocados por comando o intención.
+- `examples/`: configuraciones opinadas que no se activan por defecto.
 
-- Listado responsive de ofertas con tarjetas compactas.
-- Detalle de oferta con explicación de compatibilidad.
-- Filtros persistentes en la URL.
-- Estados de oferta: `new`, `seen`, `saved`, `hidden`, `applied`.
-- Configuración de fuentes.
-- Editor de criterios con señales ponderadas, exclusiones duras y reglas condicionales.
-- Pantallas de perfil, emails, historial y ajustes.
-- Datos mockeados para desarrollo local.
-- Persistencia local/Supabase para jobs, fuentes, perfil, criterios, settings, matches y logs.
-- Autenticación privada opcional con Supabase Auth.
-- Diseño mobile-first con layout adaptativo en escritorio.
+Los adaptadores nunca deben contener copias manuales del contenido canónico.
 
-## Stack técnico
+## Compatibilidad
 
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS 4
-- shadcn UI
-- TanStack Query
-- React Router
-- Lucide React
-- Radix UI
-- Supabase JS
-- Zod
+| Agente | Instrucciones | Skills | Rules | Adaptador |
+| --- | --- | --- | --- | --- |
+| Codex | `AGENTS.md` nativo | `.agents/skills` | Mediante `AGENTS.md` | Ninguno |
+| Cursor | `AGENTS.md` nativo | `.cursor/skills` | `.cursor/rules` | Symlinks |
+| Claude Code | `CLAUDE.md` importa `AGENTS.md` | `.claude/skills` | Mediante `AGENTS.md` | Import + symlink |
+| Gemini CLI | `GEMINI.md` importa `AGENTS.md` | `.agents/skills` | Mediante `AGENTS.md` | Import |
+| Windsurf / Devin | `AGENTS.md` nativo | Según soporte del cliente | `AGENTS.md` nativo | Ninguno |
+| GitHub Copilot | `AGENTS.md` nativo | Según soporte del cliente | `AGENTS.md` nativo | Ninguno |
 
-## Rutas principales
+Un agente puede leer las instrucciones comunes aunque no implemente todos los
+mecanismos de activación de skills o rules. La compatibilidad declarada por cada
+skill indica dónde se ha diseñado para funcionar, no garantiza que todos los
+clientes tengan el mismo sistema de descubrimiento.
 
-- `/ofertas`
-- `/ofertas/:id`
-- `/fuentes`
-- `/criterios`
-- `/perfil`
-- `/emails`
-- `/historial`
-- `/ajustes`
+## Estructura
 
-## Qué hace la app hoy
-
-- Carga una colección de ofertas mock desde `src/data/mock-jobs.ts`.
-- Permite filtrar por texto, fuente, modalidad, score mínimo, keywords y estado.
-- Abre el detalle de una oferta en la misma ruta, con comportamiento adaptativo en móvil y escritorio.
-- Muestra señales positivas, alertas y estado visual de cada oferta.
-- Permite editar criterios de filtrado y priorización desde `/criterios`.
-- Ofrece pantallas de configuración para fuentes, perfil, emails e historial.
-
-## Estructura de proyecto
-
-- `src/components/jobs`: cards, listado, detalle y badges de oferta.
-- `src/components/filters`: panel, sheet y chips de filtros activos.
-- `src/components/config`: pantallas de configuración.
-- `src/components/layout`: shell global, top bar y navegación.
-- `src/data`: mocks, criterios y store local.
-- `src/hooks`: hooks de filtros, acciones y datos.
-- `src/pages`: layouts de página.
-- `src/router`: configuración de rutas.
-- `src/types`: contratos de dominio.
-- `scraper`: pipeline de ingestión y normalización.
-- `supabase/functions`: Edge Functions para análisis, comparación y digest.
-
-## Variables de entorno
-
-| Variable | Descripción | Requerida |
-|----------|-------------|-----------|
-| `VITE_SUPABASE_URL` | URL del proyecto Supabase | No (modo mock) |
-| `VITE_SUPABASE_ANON_KEY` | Clave pública anónima de Supabase | No (modo mock) |
-| `VITE_ALLOWED_EMAIL` | Email permitido en el acceso privado | No |
-| `VITE_BASE_PATH` | Base pública del build, por defecto `/buscampleo/` | No |
-| `VITE_APP_MODE` | `auto` o `mock` para forzar fallback local | No |
-| `SUPABASE_URL` | URL de Supabase para Edge Functions / GitHub Actions | No |
-| `SUPABASE_ANON_KEY` | Clave anónima de Supabase para Edge Functions / GitHub Actions | No |
-| `SUPABASE_SERVICE_ROLE_KEY` | Solo para funciones serverless / Actions; nunca en el cliente | No |
-| `ALLOWED_ORIGIN` | Orígenes permitidos para las Edge Functions de Supabase | No |
-| `OPENROUTER_API_KEY` | API key de OpenRouter para el análisis LLM | No |
-| `OPENROUTER_MODEL` | Modelo por defecto para OpenRouter, por ejemplo `anthropic/claude-haiku-4-5` | No |
-| `RESEND_API_KEY` | API key de Resend para el envío de emails transaccionales | No |
-| `EMAIL_FROM` | Dirección remitente verificada en Resend; `onboarding@resend.dev` sirve para empezar | No |
-
-> Sin ninguna variable configurada la app arranca en modo mock con datos locales.
-
-## Cómo arrancar
-
-```bash
-npm install
-cp .env.example .env   # edita los valores si quieres conectar Supabase o LLM
-npm run dev
+```text
+.
+├── AGENTS.md
+├── CLAUDE.md
+├── GEMINI.md
+├── .agents/
+│   ├── README.md
+│   ├── rules/
+│   │   └── _manifest.yml
+│   ├── skills/
+│   │   └── example-skill/
+│   │       └── SKILL.md
+│   └── workflows/
+├── .claude/
+│   └── skills -> ../.agents/skills
+├── .cursor/
+│   ├── rules -> ../.agents/rules
+│   └── skills -> ../.agents/skills
+├── examples/
+└── scripts/
+    └── validate-agent-config.mjs
 ```
 
-## Scripts disponibles
+## Uso
 
-- `npm run dev`: arranque en desarrollo.
-- `npm run build`: build de producción.
-- `npm run preview`: previsualización del build.
-- `npm run db:types`: regenera `src/lib/supabase/database.types.ts` con Supabase CLI enlazado.
-- `npm run scrape`: ejecuta el scraper TypeScript.
-- `npm test`: corre la suite `node:test` con `tsx`.
-- `npm run typecheck`: ejecuta `tsc --noEmit`.
-- `npm run lint`: revisa el código con ESLint.
-- `npm run lint:fix`: corrige automáticamente los avisos arreglables de ESLint.
-- `npm run format`: formatea el código con Prettier.
-- `npm run format:check`: comprueba que el código respeta Prettier.
-- `npm run agents:check`: valida la configuración compartida de agentes, skills, rules y workflows.
+1. Copia el boilerplate en un repositorio.
+2. Personaliza `AGENTS.md` con las restricciones globales del proyecto.
+3. Añade rules específicas con globs estrechos.
+4. Añade skills autocontenidas bajo `.agents/skills/<name>/`.
+5. Añade workflows para procedimientos repetibles.
+6. Ejecuta la validación.
 
-## Notas
+```bash
+npm run agents:check
+```
 
-- La app usa un fallback mock/local cuando faltan las variables de backend.
-- El contenido de criterios se basa en el conocimiento curado del proyecto y vive como seed tipado.
-- El proyecto expone Edge Functions en Supabase para análisis, comparación y digest, y un scraper automatizable con GitHub Actions.
+## Principios
+
+- Una única fuente de verdad editable.
+- Adaptadores mínimos y verificables.
+- Contenido global breve; contexto especializado bajo demanda.
+- Rules específicas en lugar de instrucciones universales innecesarias.
+- Skills portables aunque un cliente ignore metadatos opcionales.
+- Workflows sin dependencias obligatorias de una herramienta concreta.
+- Sin ramas, stage ni commits automáticos.
+
+## Ejemplos
+
+- `examples/skills/ux-heuristics`: skill completa con referencias.
+- `examples/react-tailwind/rules`: rules opinadas para una arquitectura React y Tailwind.
+
+Los ejemplos no se cargan ni validan como configuración activa.
+
+## Scripts
+
+- `npm run agents:check`: valida estructura, adaptadores, rules, skills,
+  workflows y referencias del manifiesto.
+- `npm test`: ejecuta los tests unitarios del validador y después `agents:check`.
+
+## Limitaciones
+
+- No existe un estándar universal para workflows.
+- Los campos de frontmatter no son interpretados igual por todos los clientes.
+- Los symlinks pueden requerir Developer Mode o privilegios equivalentes en
+  Windows. Este boilerplate asume soporte real de symlinks para mantener la
+  validación contra la fuente canónica.
